@@ -13,12 +13,37 @@ public class Main {
         int[] array = new int[arraySize];
         Arrays.fill(array, 1);
 
+        long startSingle = System.nanoTime();
+        long sumSingle = sumInMainThread(array);
+        long endSingle = System.nanoTime();
+        System.out.println("Загальна сума (один потік): " + sumSingle);
+        System.out.println("Час виконання (один потік): " + (endSingle - startSingle) / 1_000_000 + " мс");
+
+        /*long startMulti = System.nanoTime();
+        long sumMulti = sumMultiThreaded(array, threadCount);
+        long endMulti = System.nanoTime();
+        System.out.println("Загальна сума: " + sumMulti);
+        System.out.println("Час виконання: " + (endMulti - startMulti) / 1_000_000 + " мс");
+
+        System.out.println();
+        System.out.println("Очікувана сума (перевірка): " + (long) arraySize);*/
+    }
+
+    private static long sumInMainThread(int[] array) {
+        long sum = 0L;
+        for (int i = 0; i < array.length; i++) {
+            sum += array[i];
+        }
+        return sum;
+    }
+
+    private static long sumMultiThreaded(int[] array, int threadCount) throws InterruptedException {
         SumWorker[] workers = new SumWorker[threadCount];
-        int chunkSize = arraySize / threadCount;
+        int chunkSize = array.length / threadCount;
 
         for (int t = 0; t < threadCount; t++) {
             int from = t * chunkSize;
-            int to = (t == threadCount - 1) ? arraySize : from + chunkSize;
+            int to = (t == threadCount - 1) ? array.length : from + chunkSize;
 
             workers[t] = new SumWorker(array, from, to);
             workers[t].start();
@@ -30,8 +55,7 @@ public class Main {
             totalSum += workers[t].getPartialSum();
         }
 
-        System.out.println("Загальна сума елементів масиву: " + totalSum);
-        System.out.println("Очікувана сума (перевірка): " + (long) arraySize);
+        return totalSum;
     }
 }
 
@@ -55,7 +79,7 @@ class SumWorker extends Thread {
             sum += array[i];
         }
         this.partialSum = sum;
-        System.out.println("Потік ID: " + Thread.currentThread().getId() + " оброблив діапазон [" + fromIndex + ", " + toIndex + ")");
+        System.out.println("Потік ID: " + Thread.currentThread().getId() + " оброблив діапазон (" + fromIndex + ", " + toIndex + ")");
     }
 
     public long getPartialSum() {
