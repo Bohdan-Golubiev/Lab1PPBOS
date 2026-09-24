@@ -1,7 +1,10 @@
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 public class Main {
     public static void main(String[] args) throws InterruptedException {
         final int arraySize = 1_000_000_000;
@@ -13,11 +16,11 @@ public class Main {
         int[] array = new int[arraySize];
         Arrays.fill(array, 1);
 
-        long startSingle = System.nanoTime();
+        /*long startSingle = System.nanoTime();
         long sumSingle = sumInMainThread(array);
         long endSingle = System.nanoTime();
         System.out.println("Загальна сума (один потік): " + sumSingle);
-        System.out.println("Час виконання (один потік): " + (endSingle - startSingle) / 1_000_000 + " мс");
+        System.out.println("Час виконання (один потік): " + (endSingle - startSingle) / 1_000_000 + " мс");*/
 
         /*long startMulti = System.nanoTime();
         long sumMulti = sumMultiThreaded(array, threadCount);
@@ -27,6 +30,16 @@ public class Main {
 
         System.out.println();
         System.out.println("Очікувана сума (перевірка): " + (long) arraySize);*/
+
+
+        long startMulti = System.nanoTime();
+        long sumMulti = sumWithExecutor(array, threadCount);
+        long endMulti = System.nanoTime();
+        System.out.println("Загальна сума: " + sumMulti);
+        System.out.println("Час виконання: " + (endMulti - startMulti) / 1_000_000 + " мс");
+
+        System.out.println();
+        System.out.println("Очікувана сума (перевірка): " + (long) arraySize);
     }
 
     private static long sumInMainThread(int[] array) {
@@ -57,6 +70,36 @@ public class Main {
 
         return totalSum;
     }
+
+    private static long sumWithExecutor(int[] array, int threadCount) {
+        ExecutorService pool = Executors.newFixedThreadPool(threadCount);
+        try {
+            int chunk = array.length / threadCount;
+            List<Future<Long>> futures = new ArrayList<>();
+
+            for (int t = 0; t < threadCount; t++) {
+                int from = t * chunk;
+                int to = (t == threadCount - 1) ? array.length : from + chunk;
+                futures.add(pool.submit(() -> {
+                    long s = 0;
+                    for (int i = from; i < to; i++) s += array[i];
+                    return s;
+                }));
+            }
+
+            long total = 0;
+            for (Future<Long> f : futures) {
+                try {
+                    total += f.get();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            return total;
+        } finally {
+            pool.shutdown();
+        }
+    }
 }
 
 class SumWorker extends Thread {
@@ -79,7 +122,7 @@ class SumWorker extends Thread {
             sum += array[i];
         }
         this.partialSum = sum;
-        System.out.println("Потік ID: " + Thread.currentThread().getId() + " оброблив діапазон (" + fromIndex + ", " + toIndex + ")");
+        //System.out.println("Потік ID: " + Thread.currentThread().getId() + " оброблив діапазон (" + fromIndex + ", " + toIndex + ")");
     }
 
     public long getPartialSum() {
